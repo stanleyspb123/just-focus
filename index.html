@@ -706,7 +706,7 @@
     window.addEventListener('touchend', ()=>{ try{ keep.play(); }catch(_){ } }, {once:true, passive:true});
     vol.addEventListener('input', ()=>{ volVal.textContent=vol.value; if(ac){ const now=ac.currentTime; const target=.70*Math.max(0,Math.min(1,+vol.value/100)); master.gain.cancelScheduledValues(now); master.gain.setTargetAtTime(target, now, .3);} });
     tempoSlider.addEventListener('input', ()=>{ if(!ac) return; const v=+tempoSlider.value; tempoVal.textContent=v; tempoBpm=Math.max(60,Math.min(100,v|0)); beat=60/tempoBpm; stepDur=beat/subdiv; nodes?.delay?.delayTime.cancelScheduledValues(ac.currentTime); nodes?.delay?.delayTime.linearRampToValueAtTime(Math.max(.22,(60/tempoBpm)*(STYLE[curStyle].delTimeMul)), ac.currentTime+1.0); });
-else tmVal.textContent=(+timer.value>0)?String(+timer.value).padStart(2,'0')+':00':'ВЫКЛ'; });
+
     stylesBox.addEventListener('click', e=>{ const b=e.target.closest('button[data-style]'); if(!b) return; stylesBox.querySelectorAll('.style-btn').forEach(el=>el.setAttribute('aria-pressed', String(el===b))); morphToStyle(b.dataset.style,28); });
 
     document.addEventListener('visibilitychange', ()=>{
