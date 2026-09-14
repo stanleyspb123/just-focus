@@ -463,7 +463,8 @@
       n.rev.buffer = imp(1.8,.5);
       n.rOut = ctx.createGain();
       n.rOut.gain.value = .26;
-      n.rev.connect(n.rOut).connect(master);
+      n.rev.connect(n.rOut);
+      n.rOut.connect(master);
 
       n.delay = ctx.createDelay(2);
       n.fb = ctx.createGain();
@@ -471,7 +472,8 @@
       n.delay.connect(n.fb).connect(n.delay);
       n.dOut = ctx.createGain();
       n.dOut.gain.value = .14;
-      n.delay.connect(n.dOut).connect(master);
+      n.delay.connect(n.dOut);
+      n.dOut.connect(master);
 
       const base = 220, diff = 6;
       n.bl = ctx.createOscillator();
@@ -486,8 +488,10 @@
       n.bg = ctx.createGain();
       n.bg.gain.value = .014;
 
-      n.bl.connect(n.pl).connect(n.bg);
-      n.br.connect(n.pr).connect(n.bg);
+      n.bl.connect(n.pl);
+      n.br.connect(n.pr);
+      n.pl.connect(n.bg);
+      n.pr.connect(n.bg);
       n.bg.connect(master);
 
       n.padG = ctx.createGain();
@@ -500,11 +504,13 @@
 
       const pSend = ctx.createGain();
       pSend.gain.value = .14;
-      n.padLP.connect(pSend).connect(n.rev);
+      n.padLP.connect(pSend);
+      pSend.connect(n.rev);
 
       n.padBus = ctx.createGain();
       n.padBus.gain.value = 1;
-      n.padLP.connect(n.padBus).connect(master);
+      n.padLP.connect(n.padBus);
+      n.padBus.connect(master);
 
       n.rh = ctx.createGain();
       n.rh.gain.value = .07;
@@ -514,7 +520,11 @@
       n.br.start();
       updPad(0);
 
-      master.connect(n.comp).connect(ctx.destination);
+      // Final output chain. All sources/effects feed master, then compressor, then speakers.
+      master.disconnect();
+      n.comp.disconnect();
+      master.connect(n.comp);
+      n.comp.connect(ctx.destination);
 
       setBPM(+bpmEl.value || 76);
       applyPreset(state.currentStyle);
@@ -539,19 +549,23 @@
       gain.gain.exponentialRampToValueAtTime(.0001,time+a+d+r);
 
       o.frequency.setValueAtTime(f,time);
-      o.connect(v).connect(gain);
+      o.connect(v);
+      v.connect(gain);
 
       const dry = ctx.createGain();
       dry.gain.value = state.currentStyle === 'space' ? .42 : .56;
-      gain.connect(dry).connect(master);
+      gain.connect(dry);
+      dry.connect(master);
 
       const sd = ctx.createGain();
       sd.gain.value = state.currentStyle === 'space' ? .52 : .34;
-      gain.connect(sd).connect(n.delay);
+      gain.connect(sd);
+      sd.connect(n.delay);
 
       const sr = ctx.createGain();
       sr.gain.value = state.currentStyle === 'warm' ? .24 : .18;
-      gain.connect(sr).connect(n.rev);
+      gain.connect(sr);
+      sr.connect(n.rev);
 
       o.start(time);
       o.stop(time+2);
@@ -597,7 +611,8 @@
 
       o.frequency.setValueAtTime(state.currentStyle==='zimmer' ? 100 : 86,time);
       o.frequency.exponentialRampToValueAtTime(52,time+.18);
-      o.connect(gain).connect(n.rh);
+      o.connect(gain);
+      gain.connect(n.rh);
 
       o.start(time);
       o.stop(time+.22);
@@ -620,7 +635,10 @@
       gain.gain.exponentialRampToValueAtTime(.08,time+.005);
       gain.gain.exponentialRampToValueAtTime(.0001,time+.07);
 
-      src.connect(hp).connect(lp).connect(gain).connect(n.rh);
+      src.connect(hp);
+      hp.connect(lp);
+      lp.connect(gain);
+      gain.connect(n.rh);
       src.start(time);
       src.stop(time+.08);
     }
