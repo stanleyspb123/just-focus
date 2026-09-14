@@ -140,7 +140,7 @@
     }
     .controls{
       width:min(620px,100%);
-      display:grid;grid-template-columns:1fr auto;gap:18px;
+      display:grid;grid-template-columns:1fr;gap:18px;
       align-items:center;margin-top:24px;padding-top:20px;border-top:1px solid var(--line);
     }
     .sliderBox{text-align:left}
@@ -231,6 +231,14 @@
           </div>
           <input id="stim" type="range" min="0" max="100" step="1" value="30" />
         </div>
+
+        <div class="sliderBox">
+          <div class="sliderHead">
+            <span class="sliderTitle">Громкость</span>
+            <span class="sliderValue" id="volumeValue">40%</span>
+          </div>
+          <input id="volume" type="range" min="0" max="100" step="1" value="40" />
+        </div>
         <button class="quietBtn" id="lessBtn">Слишком много</button>
       </div>
     </div>
@@ -292,6 +300,8 @@
   const label = document.getElementById('stateLabel');
   const stim = document.getElementById('stim');
   const stimValue = document.getElementById('stimValue');
+  const volume = document.getElementById('volume');
+  const volumeValue = document.getElementById('volumeValue');
   const playBtn = document.getElementById('playBtn');
   const nowLabel = document.getElementById('nowLabel');
   const backBtn = document.getElementById('backBtn');
@@ -343,6 +353,18 @@
     if(playing) applyProfile(false);
   }
   stim.oninput=updateStim;
+
+  function updateVolume(){
+    const v = +volume.value;
+
+    volumeValue.textContent = v + '%';
+
+    if(ac && playing){
+      applyProfile();
+    }
+  }
+
+  volume.oninput = updateVolume;
   lessBtn.onclick=()=>{
     stim.value=Math.max(0,+stim.value-15);
     updateStim();
@@ -396,7 +418,14 @@
   }
   function applyProfile(){
     if(!ac)return;const s=(+stim.value)/100;let volume=.68+s*.22,rv=.28;if(currentKey==='routine'){volume=.72+s*.24;rv=.22}if(currentKey==='work'){volume=.66+s*.18;rv=.31}if(currentKey==='sleep'){volume=.54+s*.16;rv=.44}if(currentKey==='stress'||currentKey==='meditate'){volume=.56+s*.16;rv=.40}if(currentKey==='overload'){volume=.12+s*.18;rv=.45}
-    master.gain.setTargetAtTime(playing?Math.min(1.05,volume*1.18):.0001,ac.currentTime,.18);wet.gain.setTargetAtTime(rv,ac.currentTime,.2);dry.gain.setTargetAtTime(1-rv*.55,ac.currentTime,.2);if(playing)startSequence(currentKey);
+    const volumePercent = +document.getElementById('volume').value;
+    const volumeFactor = volumePercent / 40;
+
+    master.gain.setTargetAtTime(
+      playing ? volume * 1.18 * volumeFactor : .0001,
+      ac.currentTime,
+      .18
+    );wet.gain.setTargetAtTime(rv,ac.currentTime,.2);dry.gain.setTargetAtTime(1-rv*.55,ac.currentTime,.2);if(playing)startSequence(currentKey);
     const labels={routine:'chill groove · generative melody',drive:'steady harmony · soft piano',work:'warm chords · sparse electric piano',sport:'melodic groove · bass · pulse',meditate:'ambient harmony',sleep:'slow pads · distant piano',stress:'warm harmony · sparse piano',overload:s<.15?'почти тишина':'minimal tonal ambient'};nowLabel.textContent=labels[currentKey];
   }
   async function startAudio(){ensureAudio();if(ac.state==='suspended')await ac.resume();playing=true;playBtn.dataset.playing='1';applyProfile()}
