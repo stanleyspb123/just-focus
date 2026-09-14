@@ -374,13 +374,13 @@
   let ac=null,master=null,dry=null,wet=null,reverb=null,timers=[],generation=0;
   const MUSIC={
     routine:{bpm:104,root:48,chords:[[0,4,7,11],[9,12,16,19],[5,9,12,16],[7,11,14,17]],melody:[12,14,16,null,19,16,14,null,12,14,16,14,12,null,9,null],cb:8,bass:1,pulse:1},
-    drive:{bpm:92,root:45,chords:[[0,4,7,11],[5,9,12,16],[7,11,14,18],[2,5,9,12]],melody:[12,null,14,null,16,null,14,null,12,null,9,null,11,null,9,null],cb:12,bass:1,pulse:0},
+    drive:{bpm:94,root:45,chords:[[0,4,7,11],[5,9,12,16],[7,11,14,18],[2,5,9,12]],melody:[12,null,null,14,null,null,11,null,12,null,null,9,null,null,11,null],cb:8,bass:1,pulse:1},
     work:{bpm:74,root:50,chords:[[0,4,7,11],[9,12,16,19],[5,9,12,16],[7,11,14,18]],melody:[14,null,null,11,null,null,9,null,11,null,null,14,null,null,9,null],cb:12,bass:0,pulse:0},
-    sport:{bpm:128,root:45,chords:[[0,3,7,10],[5,8,12,15],[8,12,15,19],[7,10,14,17]],melody:[12,15,17,15,19,17,15,12,12,15,17,19,22,19,17,15],cb:8,bass:1,pulse:1},
-    meditate:{bpm:60,root:50,chords:[[0,7,12,16],[0,5,12,17]],melody:[12,null,null,null,7,null,null,null],cb:20,bass:0,pulse:0},
+    sport:{bpm:126,root:45,chords:[[0,3,7,10],[5,8,12,15],[8,12,15,19],[7,10,14,17]],melody:[12,12,15,17,15,12,19,17,12,12,15,17,19,17,15,12],cb:8,bass:1,pulse:1},
+    meditate:{bpm:60,root:50,chords:[[0,7,12,16],[5,12,17,21]],melody:[],cb:20,bass:0,pulse:0},
     sleep:{bpm:58,root:48,chords:[[0,4,7,11],[5,9,12,16],[9,12,16,19],[7,11,14,16]],melody:[19,null,null,null,null,null,16,null,null,null,null,null,14,null,null,null],cb:16,bass:0,pulse:0},
-    stress:{bpm:62,root:53,chords:[[0,4,7,12],[5,9,12,16],[2,5,9,12],[0,4,7,9]],melody:[12,null,null,null,9,null,null,null,7,null,null,null],cb:16,bass:0,pulse:0},
-    overload:{bpm:54,root:48,chords:[[0,7,12]],melody:[],cb:24,bass:0,pulse:0}
+    stress:{bpm:58,root:48,chords:[[0,4,7,12],[5,9,12,17],[7,11,14,19],[0,4,9,12]],melody:[12,null,null,null,null,null,null,null,9,null,null,null,null,null,null,null],cb:16,bass:0,pulse:0},
+    overload:{bpm:48,root:48,chords:[[0,7,12]],melody:[],cb:32,bass:0,pulse:0}
   };
   const AUDIO_BOOST=2.0;
   const midi=n=>440*Math.pow(2,(n-69)/12);
@@ -413,10 +413,54 @@
     clearMusic();const token=generation,p=MUSIC[key],s=(+stim.value)/100,beat=60000/p.bpm;let ci=0,step=0;
     function chords(){if(!playing||token!==generation)return;const notes=p.chords[ci++%p.chords.length].map(x=>p.root+x);let level=key==='overload'?.03*s:key==='sleep'?.085:key==='work'?.095:.11+s*.085;chord(notes,level,beat*p.cb/1000*1.06,!['routine','sport'].includes(key))}
     chords();timers.push(setInterval(chords,beat*p.cb));
-    function seq(){if(!playing||token!==generation)return;if(p.melody.length){const off=p.melody[step%p.melody.length];if(off!==null){const n=p.root+off;if(key==='routine'&&s>.18)pluck(n,.020+s*.035,.45);else if(key==='sport'&&s>.12)pluck(n,.024+s*.040,.30);else if(key==='drive'&&s>.20)piano(n,.012+s*.016,1.1);else if(key==='work'&&s>.10)piano(n,.011+s*.014,1.7);else if(key==='sleep')piano(n,.009+s*.009,2.8);else if(key==='stress'||key==='meditate')piano(n,.010+s*.010,2.2)}}if(p.bass&&s>.42&&step%4===0)bass(p.root-12,.024+s*.040,.32);if(p.pulse&&s>.62&&step%2===1)pulse(.006+s*.012);step++}
-    seq();timers.push(setInterval(seq,beat/2));
+    function seq(){if(!playing||token!==generation)return;if(p.melody.length){const off=p.melody[step%p.melody.length];if(off!==null){const n=p.root+off;if(key==='routine'&&s>.18)pluck(n,.020+s*.035,.45);else if(key==='sport'&&s>.12)pluck(n,.024+s*.040,.30);else if(key==='drive'&&s>.20)piano(n,.012+s*.016,1.1);else if(key==='work'&&s>.10)piano(n,.011+s*.014,1.7);else if(key==='sleep')piano(n,.009+s*.009,2.8);else if(key==='stress'||key==='meditate')piano(n,.010+s*.010,2.2)}}if(p.bass&&s>.42&&step%4===0){
+        if(key==='drive'){
+          bass(p.root-12,.018+s*.030,.42);
+        } else {
+          bass(p.root-12,.024+s*.040,.32);
+        }
+      }if(p.pulse){
+        if(key==='sport' && s>.45 && step%2===1){
+          pulse(.007+s*.014);
+        }
+
+        if(key==='drive' && s>.55 && step%4===2){
+          pulse(.003+s*.006);
+        }
+      }step++}
+    seq();
+    timers.push(setInterval(seq,beat/2));
+
+    if(key==='meditate'){
+      meditationBreath(token);
+    }
   }
-  function applyProfile(){
+  
+  function meditationBreath(token){
+    function cycle(){
+      if(!playing || currentKey!=='meditate' || token!==generation) return;
+
+      nowLabel.textContent='вдох · 4 сек';
+      piano(62,.012,3.8);
+
+      const inhale=setTimeout(()=>{
+        if(!playing || currentKey!=='meditate' || token!==generation) return;
+
+        nowLabel.textContent='выдох · 6 сек';
+        piano(57,.010,5.7);
+
+        const next=setTimeout(cycle,6000);
+        timers.push(next);
+
+      },4000);
+
+      timers.push(inhale);
+    }
+
+    cycle();
+  }
+
+function applyProfile(){
     if(!ac)return;const s=(+stim.value)/100;let volume=.68+s*.22,rv=.28;if(currentKey==='routine'){volume=.72+s*.24;rv=.22}if(currentKey==='work'){volume=.66+s*.18;rv=.31}if(currentKey==='sleep'){volume=.54+s*.16;rv=.44}if(currentKey==='stress'||currentKey==='meditate'){volume=.56+s*.16;rv=.40}if(currentKey==='overload'){volume=.12+s*.18;rv=.45}
     const volumePercent = +document.getElementById('volume').value;
     const volumeFactor = volumePercent / 40;
