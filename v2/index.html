@@ -394,7 +394,7 @@
     seq();timers.push(setInterval(seq,beat/2));
   }
   function applyProfile(){
-    if(!ac)return;const s=(+stim.value)/100;let volume=.42+s*.18,rv=.28;if(currentKey==='routine'){volume=.44+s*.20;rv=.22}if(currentKey==='work'){volume=.40+s*.13;rv=.31}if(currentKey==='sleep'){volume=.32+s*.10;rv=.44}if(currentKey==='stress'||currentKey==='meditate'){volume=.34+s*.10;rv=.40}if(currentKey==='overload'){volume=.12+s*.18;rv=.45}
+    if(!ac)return;const s=(+stim.value)/100;let volume=.68+s*.22,rv=.28;if(currentKey==='routine'){volume=.72+s*.24;rv=.22}if(currentKey==='work'){volume=.66+s*.18;rv=.31}if(currentKey==='sleep'){volume=.54+s*.16;rv=.44}if(currentKey==='stress'||currentKey==='meditate'){volume=.56+s*.16;rv=.40}if(currentKey==='overload'){volume=.12+s*.18;rv=.45}
     master.gain.setTargetAtTime(playing?volume:.0001,ac.currentTime,.18);wet.gain.setTargetAtTime(rv,ac.currentTime,.2);dry.gain.setTargetAtTime(1-rv*.55,ac.currentTime,.2);if(playing)startSequence(currentKey);
     const labels={routine:'chill groove · generative melody',drive:'steady harmony · soft piano',work:'warm chords · sparse electric piano',sport:'melodic groove · bass · pulse',meditate:'ambient harmony',sleep:'slow pads · distant piano',stress:'warm harmony · sparse piano',overload:s<.15?'почти тишина':'minimal tonal ambient'};nowLabel.textContent=labels[currentKey];
   }
