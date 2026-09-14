@@ -360,6 +360,7 @@
     stress:{bpm:62,root:53,chords:[[0,4,7,12],[5,9,12,16],[2,5,9,12],[0,4,7,9]],melody:[12,null,null,null,9,null,null,null,7,null,null,null],cb:16,bass:0,pulse:0},
     overload:{bpm:54,root:48,chords:[[0,7,12]],melody:[],cb:24,bass:0,pulse:0}
   };
+  const AUDIO_BOOST=2.0;
   const midi=n=>440*Math.pow(2,(n-69)/12);
   function ensureAudio(){
     if(ac)return; ac=new(window.AudioContext||window.webkitAudioContext)();
@@ -374,18 +375,18 @@
   function clearMusic(){timers.forEach(x=>{clearTimeout(x);clearInterval(x)});timers=[];generation++}
   function env(g,t,p,d,a,r){g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.0002,p),t+a);g.gain.setValueAtTime(Math.max(.0002,p),Math.max(t+a+.01,t+d-r));g.gain.exponentialRampToValueAtTime(.0001,t+d)}
   function pad(note,level,duration,soft=true){
-    if(!playing)return;const t=ac.currentTime,f=ac.createBiquadFilter(),g=ac.createGain();f.type='lowpass';f.frequency.value=soft?1050:1550;f.Q.value=.35;env(g,t,level,duration,soft?.8:.18,Math.min(2.2,duration*.35));
+    if(!playing)return;const t=ac.currentTime,f=ac.createBiquadFilter(),g=ac.createGain();f.type='lowpass';f.frequency.value=soft?1050:1550;f.Q.value=.35;env(g,t,level*AUDIO_BOOST,duration,soft?.8:.18,Math.min(2.2,duration*.35));
     [-7,0,7].forEach((det,i)=>{const o=ac.createOscillator(),og=ac.createGain();o.type=i===1?'sine':'triangle';o.frequency.value=midi(note);o.detune.value=det;og.gain.value=i===1?.54:.23;o.connect(og).connect(f);o.start(t);o.stop(t+duration+.05)});f.connect(g);route(g);
   }
   function chord(notes,level,duration,soft=true){notes.forEach((n,i)=>{pad(n,level/notes.length,duration,soft);if(i<3)pad(n+12,level/(notes.length*7),duration*.9,true)})}
   function piano(note,level=.02,duration=1.6){
-    if(!playing)return;const t=ac.currentTime,g=ac.createGain(),o1=ac.createOscillator(),o2=ac.createOscillator(),hg=ac.createGain();g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(level,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o1.type=o2.type='sine';o1.frequency.value=midi(note);o2.frequency.value=midi(note)*2.002;hg.gain.setValueAtTime(.20,t);hg.gain.exponentialRampToValueAtTime(.001,t+Math.min(.55,duration));o1.connect(g);o2.connect(hg).connect(g);route(g);o1.start(t);o2.start(t);o1.stop(t+duration+.04);o2.stop(t+duration+.04);
+    if(!playing)return;const t=ac.currentTime,g=ac.createGain(),o1=ac.createOscillator(),o2=ac.createOscillator(),hg=ac.createGain();g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(level*AUDIO_BOOST,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o1.type=o2.type='sine';o1.frequency.value=midi(note);o2.frequency.value=midi(note)*2.002;hg.gain.setValueAtTime(.20,t);hg.gain.exponentialRampToValueAtTime(.001,t+Math.min(.55,duration));o1.connect(g);o2.connect(hg).connect(g);route(g);o1.start(t);o2.start(t);o1.stop(t+duration+.04);o2.stop(t+duration+.04);
   }
   function pluck(note,level=.02,duration=.42){
-    if(!playing)return;const t=ac.currentTime,o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain();o.type='triangle';o.frequency.value=midi(note);f.type='lowpass';f.frequency.setValueAtTime(2200,t);f.frequency.exponentialRampToValueAtTime(650,t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(level,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(f).connect(g);route(g);o.start(t);o.stop(t+duration+.03);
+    if(!playing)return;const t=ac.currentTime,o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain();o.type='triangle';o.frequency.value=midi(note);f.type='lowpass';f.frequency.setValueAtTime(2200,t);f.frequency.exponentialRampToValueAtTime(650,t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(level*AUDIO_BOOST,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(f).connect(g);route(g);o.start(t);o.stop(t+duration+.03);
   }
-  function bass(note,level=.025,duration=.3){if(!playing)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain(),f=ac.createBiquadFilter();o.type='sine';o.frequency.value=midi(note);f.type='lowpass';f.frequency.value=320;env(g,t,level,duration,.01,.20);o.connect(f).connect(g);route(g);o.start(t);o.stop(t+duration+.04)}
-  function pulse(level=.008){if(!playing)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.setValueAtTime(420,t);o.frequency.exponentialRampToValueAtTime(220,t+.055);g.gain.setValueAtTime(level,t);g.gain.exponentialRampToValueAtTime(.0001,t+.07);o.connect(g);route(g);o.start(t);o.stop(t+.08)}
+  function bass(note,level=.025,duration=.3){if(!playing)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain(),f=ac.createBiquadFilter();o.type='sine';o.frequency.value=midi(note);f.type='lowpass';f.frequency.value=320;env(g,t,level*AUDIO_BOOST,duration,.01,.20);o.connect(f).connect(g);route(g);o.start(t);o.stop(t+duration+.04)}
+  function pulse(level=.008){if(!playing)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.setValueAtTime(420,t);o.frequency.exponentialRampToValueAtTime(220,t+.055);g.gain.setValueAtTime(level*AUDIO_BOOST,t);g.gain.exponentialRampToValueAtTime(.0001,t+.07);o.connect(g);route(g);o.start(t);o.stop(t+.08)}
   function startSequence(key){
     clearMusic();const token=generation,p=MUSIC[key],s=(+stim.value)/100,beat=60000/p.bpm;let ci=0,step=0;
     function chords(){if(!playing||token!==generation)return;const notes=p.chords[ci++%p.chords.length].map(x=>p.root+x);let level=key==='overload'?.03*s:key==='sleep'?.085:key==='work'?.095:.11+s*.085;chord(notes,level,beat*p.cb/1000*1.06,!['routine','sport'].includes(key))}
@@ -395,7 +396,7 @@
   }
   function applyProfile(){
     if(!ac)return;const s=(+stim.value)/100;let volume=.68+s*.22,rv=.28;if(currentKey==='routine'){volume=.72+s*.24;rv=.22}if(currentKey==='work'){volume=.66+s*.18;rv=.31}if(currentKey==='sleep'){volume=.54+s*.16;rv=.44}if(currentKey==='stress'||currentKey==='meditate'){volume=.56+s*.16;rv=.40}if(currentKey==='overload'){volume=.12+s*.18;rv=.45}
-    master.gain.setTargetAtTime(playing?volume:.0001,ac.currentTime,.18);wet.gain.setTargetAtTime(rv,ac.currentTime,.2);dry.gain.setTargetAtTime(1-rv*.55,ac.currentTime,.2);if(playing)startSequence(currentKey);
+    master.gain.setTargetAtTime(playing?Math.min(1.05,volume*1.18):.0001,ac.currentTime,.18);wet.gain.setTargetAtTime(rv,ac.currentTime,.2);dry.gain.setTargetAtTime(1-rv*.55,ac.currentTime,.2);if(playing)startSequence(currentKey);
     const labels={routine:'chill groove · generative melody',drive:'steady harmony · soft piano',work:'warm chords · sparse electric piano',sport:'melodic groove · bass · pulse',meditate:'ambient harmony',sleep:'slow pads · distant piano',stress:'warm harmony · sparse piano',overload:s<.15?'почти тишина':'minimal tonal ambient'};nowLabel.textContent=labels[currentKey];
   }
   async function startAudio(){ensureAudio();if(ac.state==='suspended')await ac.resume();playing=true;playBtn.dataset.playing='1';applyProfile()}
