@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#08090b" />
-  <title>JUST FOCUS 2.4</title>
+  <title>JUST FOCUS 2.6</title>
   <style>
     :root{
       --bg:#08090b;
@@ -196,7 +196,7 @@
   <canvas id="waves"></canvas>
   <header class="topbar">
     <div class="brand">JUST FOCUS</div>
-    <div class="version">experimental v2.4</div>
+    <div class="version">experimental v2.6</div>
   </header>
 
   <section class="screen" id="homeScreen">
@@ -409,58 +409,547 @@
   }
   function bass(note,level=.025,duration=.3){if(!playing)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain(),f=ac.createBiquadFilter();o.type='sine';o.frequency.value=midi(note);f.type='lowpass';f.frequency.value=320;env(g,t,level*AUDIO_BOOST,duration,.01,.20);o.connect(f).connect(g);route(g);o.start(t);o.stop(t+duration+.04)}
   function pulse(level=.008){if(!playing)return;const t=ac.currentTime,o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.setValueAtTime(420,t);o.frequency.exponentialRampToValueAtTime(220,t+.055);g.gain.setValueAtTime(level*AUDIO_BOOST,t);g.gain.exponentialRampToValueAtTime(.0001,t+.07);o.connect(g);route(g);o.start(t);o.stop(t+.08)}
-  function startSequence(key){
-    clearMusic();const token=generation,p=MUSIC[key],s=(+stim.value)/100,beat=60000/p.bpm;let ci=0,step=0;
-    function chords(){if(!playing||token!==generation)return;const notes=p.chords[ci++%p.chords.length].map(x=>p.root+x);let level=key==='overload'?.03*s:key==='sleep'?.085:key==='work'?.095:.11+s*.085;chord(notes,level,beat*p.cb/1000*1.06,!['routine','sport'].includes(key))}
-    chords();timers.push(setInterval(chords,beat*p.cb));
-    function seq(){if(!playing||token!==generation)return;if(p.melody.length){const off=p.melody[step%p.melody.length];if(off!==null){const n=p.root+off;if(key==='routine'&&s>.18)pluck(n,.020+s*.035,.45);else if(key==='sport'&&s>.12)pluck(n,.024+s*.040,.30);else if(key==='drive'&&s>.20)piano(n,.012+s*.016,1.1);else if(key==='work'&&s>.10)piano(n,.011+s*.014,1.7);else if(key==='sleep')piano(n,.009+s*.009,2.8);else if(key==='stress'||key==='meditate')piano(n,.010+s*.010,2.2)}}if(p.bass&&s>.42&&step%4===0){
-        if(key==='drive'){
-          bass(p.root-12,.018+s*.030,.42);
-        } else {
-          bass(p.root-12,.024+s*.040,.32);
-        }
-      }if(p.pulse){
-        if(key==='sport' && s>.45 && step%2===1){
-          pulse(.007+s*.014);
+  
+  // ================================
+  // V2.6 GENERATIVE EVOLUTION ENGINE
+  // ================================
+
+  const SCALE = [0,2,4,5,7,9,11,12];
+
+  const SESSION = {
+    motif: {},
+    lastChord: {},
+    bars: {},
+    phrase: {}
+  };
+
+  function choose(arr){
+    return arr[Math.floor(Math.random()*arr.length)];
+  }
+
+  function chance(p){
+    return Math.random() < p;
+  }
+
+  function clamp(v,min,max){
+    return Math.max(min,Math.min(max,v));
+  }
+
+  function generateMotif(key, stimulation){
+
+    const p = MUSIC[key];
+
+    let length =
+      key==='sport' ? 8 :
+      key==='routine' ? 8 :
+      key==='drive' ? 6 :
+      key==='work' ? 5 :
+      key==='sleep' ? 3 :
+      key==='stress' ? 3 : 2;
+
+    const motif=[];
+
+    let degree = choose([0,1,2,4]);
+
+    for(let i=0;i<length;i++){
+
+      if(chance(.18)){
+        motif.push(null);
+        continue;
+      }
+
+      const movementRoll=Math.random();
+
+      if(movementRoll < .48){
+        degree += choose([-1,1]);
+      }
+      else if(movementRoll < .72){
+        degree += 0;
+      }
+      else if(movementRoll < .92){
+        degree += choose([-2,2]);
+      }
+      else{
+        degree += choose([-3,3]);
+      }
+
+      degree=clamp(degree,0,SCALE.length-1);
+
+      motif.push(
+        p.root + 12 + SCALE[degree]
+      );
+    }
+
+    return motif;
+  }
+
+
+  function mutateMotif(motif,key,stimulation){
+
+    const result=[...motif];
+
+    const mutationRate =
+      .08 + stimulation*.24;
+
+    for(let i=0;i<result.length;i++){
+
+      if(
+        result[i]!==null &&
+        chance(mutationRate)
+      ){
+
+        result[i] += choose([-2,0,2]);
+
+      }
+
+      if(chance(.04 + stimulation*.06)){
+        result[i]=null;
+      }
+    }
+
+    return result;
+  }
+
+
+  function nextChord(key){
+
+    const p=MUSIC[key];
+
+    let current =
+      SESSION.lastChord[key] ?? 0;
+
+    const transitions = {
+
+      0:[0,1,1,2,3],
+
+      1:[0,2,2,3],
+
+      2:[0,1,3,3],
+
+      3:[0,0,1,2]
+
+    };
+
+    let options =
+      transitions[current] ||
+      [0,1,2,3];
+
+    let next =
+      choose(options) %
+      p.chords.length;
+
+    SESSION.lastChord[key]=next;
+
+    return p.chords[next];
+  }
+
+
+  function getPhraseMotif(key,stim){
+
+    SESSION.bars[key] =
+      (SESSION.bars[key]||0)+1;
+
+    if(!SESSION.motif[key]){
+
+      SESSION.motif[key] =
+        generateMotif(key,stim);
+
+      SESSION.phrase[key]=0;
+
+      return SESSION.motif[key];
+
+    }
+
+    SESSION.phrase[key] =
+      (SESSION.phrase[key]||0)+1;
+
+
+    // Повторяем мотив, но постепенно изменяем его.
+
+    if(SESSION.phrase[key] <= 2){
+
+      return SESSION.motif[key];
+
+    }
+
+
+    if(SESSION.phrase[key] <= 4){
+
+      SESSION.motif[key] =
+        mutateMotif(
+          SESSION.motif[key],
+          key,
+          stim*.55
+        );
+
+      return SESSION.motif[key];
+
+    }
+
+
+    // Новый мотив через несколько фраз
+
+    SESSION.motif[key] =
+      generateMotif(key,stim);
+
+    SESSION.phrase[key]=0;
+
+    return SESSION.motif[key];
+
+  }
+
+
+  function humanVelocity(base){
+
+    return base *
+      (.88 + Math.random()*.24);
+
+  }
+
+
+  function humanTiming(ms){
+
+    return ms +
+      (Math.random()*24-12);
+
+  }
+
+function startSequence(key){
+
+    clearMusic();
+
+    const token=generation;
+    const p=MUSIC[key];
+    const stimulation=(+stim.value)/100;
+    const beat=60000/p.bpm;
+
+    let step=0;
+    let currentMotif=[];
+
+
+    // ----------------
+    // HARMONY
+    // ----------------
+
+    function chordTick(){
+
+      if(!playing || token!==generation)
+        return;
+
+
+      // Overload на минимуме = почти тишина
+
+      if(
+        key==='overload' &&
+        stimulation<.20
+      ){
+        return;
+      }
+
+
+      const chordInts =
+        nextChord(key);
+
+      const notes =
+        chordInts.map(
+          x=>p.root+x
+        );
+
+
+      let level =
+        key==='overload' ? .018*stimulation :
+        key==='sleep' ? .085 :
+        key==='work' ? .095 :
+        .11+stimulation*.045;
+
+
+      // Очень медленная вариация громкости
+
+      level *=
+        .92 + Math.random()*.16;
+
+
+      chord(
+        notes,
+        level,
+        beat*p.cb/1000*1.06,
+        !['routine','sport'].includes(key)
+      );
+
+
+      currentMotif =
+        getPhraseMotif(
+          key,
+          stimulation
+        );
+
+    }
+
+
+    chordTick();
+
+    timers.push(
+      setInterval(
+        chordTick,
+        beat*p.cb
+      )
+    );
+
+
+    // ----------------
+    // MELODY
+    // ----------------
+
+    function melodyTick(){
+
+      if(
+        !playing ||
+        token!==generation
+      ) return;
+
+
+      if(
+        currentMotif.length &&
+        key!=='overload' &&
+        key!=='meditate'
+      ){
+
+        const note =
+          currentMotif[
+            step %
+            currentMotif.length
+          ];
+
+
+        if(note!==null){
+
+          if(key==='routine'){
+
+            if(
+              stimulation>.18 &&
+              chance(.72 + stimulation*.20)
+            ){
+              pluck(
+                note,
+                humanVelocity(
+                  .020 +
+                  stimulation*.035
+                ),
+                .38 +
+                Math.random()*.14
+              );
+            }
+
+          }
+
+
+          else if(key==='sport'){
+
+            if(
+              stimulation>.12 &&
+              chance(.80)
+            ){
+              pluck(
+                note,
+                humanVelocity(
+                  .024 +
+                  stimulation*.040
+                ),
+                .25 +
+                Math.random()*.10
+              );
+            }
+
+          }
+
+
+          else if(key==='drive'){
+
+            if(
+              stimulation>.20 &&
+              chance(.52)
+            ){
+              piano(
+                note,
+                humanVelocity(
+                  .012 +
+                  stimulation*.016
+                ),
+                1.0 +
+                Math.random()*.4
+              );
+            }
+
+          }
+
+
+          else if(key==='work'){
+
+            if(
+              stimulation>.10 &&
+              chance(.34 + stimulation*.12)
+            ){
+              piano(
+                note,
+                humanVelocity(
+                  .011 +
+                  stimulation*.014
+                ),
+                1.5 +
+                Math.random()*.6
+              );
+            }
+
+          }
+
+
+          else if(key==='sleep'){
+
+            if(chance(.24)){
+
+              piano(
+                note,
+                humanVelocity(
+                  .009 +
+                  stimulation*.009
+                ),
+                2.4 +
+                Math.random()*1.0
+              );
+
+            }
+
+          }
+
+
+          else if(key==='stress'){
+
+            if(chance(.20)){
+
+              piano(
+                note,
+                humanVelocity(
+                  .010 +
+                  stimulation*.010
+                ),
+                2.0 +
+                Math.random()*.8
+              );
+
+            }
+
+          }
+
         }
 
-        if(key==='drive' && s>.55 && step%4===2){
-          pulse(.003+s*.006);
+      }
+
+
+      // ----------------
+      // BASS
+      // ----------------
+
+      if(
+        p.bass &&
+        stimulation>.42 &&
+        step%4===0
+      ){
+
+        if(key==='drive'){
+
+          if(chance(.82)){
+            bass(
+              p.root-12,
+              humanVelocity(
+                .018 +
+                stimulation*.030
+              ),
+              .38 +
+              Math.random()*.12
+            );
+          }
+
+        }else{
+
+          bass(
+            p.root-12,
+            humanVelocity(
+              .024 +
+              stimulation*.040
+            ),
+            .28 +
+            Math.random()*.10
+          );
+
         }
-      }step++}
-    seq();
-    timers.push(setInterval(seq,beat/2));
+
+      }
+
+
+      // ----------------
+      // RHYTHMIC PULSE
+      // ----------------
+
+      if(p.pulse){
+
+        if(
+          key==='sport' &&
+          stimulation>.45 &&
+          step%2===1 &&
+          chance(.88)
+        ){
+
+          pulse(
+            humanVelocity(
+              .007 +
+              stimulation*.014
+            )
+          );
+
+        }
+
+
+        if(
+          key==='drive' &&
+          stimulation>.55 &&
+          step%4===2 &&
+          chance(.70)
+        ){
+
+          pulse(
+            humanVelocity(
+              .003 +
+              stimulation*.006
+            )
+          );
+
+        }
+
+      }
+
+
+      step++;
+
+    }
+
+
+    melodyTick();
+
+    timers.push(
+      setInterval(
+        melodyTick,
+        beat/2
+      )
+    );
+
 
     if(key==='meditate'){
       meditationBreath(token);
     }
-  }
-  
-  function meditationBreath(token){
-    function cycle(){
-      if(!playing || currentKey!=='meditate' || token!==generation) return;
 
-      nowLabel.textContent='вдох · 4 сек';
-      piano(62,.012,3.8);
-
-      const inhale=setTimeout(()=>{
-        if(!playing || currentKey!=='meditate' || token!==generation) return;
-
-        nowLabel.textContent='выдох · 6 сек';
-        piano(57,.010,5.7);
-
-        const next=setTimeout(cycle,6000);
-        timers.push(next);
-
-      },4000);
-
-      timers.push(inhale);
-    }
-
-    cycle();
   }
 
-function applyProfile(){
+  function applyProfile(){
     if(!ac)return;const s=(+stim.value)/100;let volume=.68+s*.22,rv=.28;if(currentKey==='routine'){volume=.72+s*.24;rv=.22}if(currentKey==='work'){volume=.66+s*.18;rv=.31}if(currentKey==='sleep'){volume=.54+s*.16;rv=.44}if(currentKey==='stress'||currentKey==='meditate'){volume=.56+s*.16;rv=.40}if(currentKey==='overload'){volume=.12+s*.18;rv=.45}
     const volumePercent = +document.getElementById('volume').value;
     const volumeFactor = volumePercent / 40;
